@@ -154,6 +154,46 @@ dialog[open]{animation:up .22s ease}
 .backup p.due{color:var(--neg)}
 .backup .row{display:flex;gap:10px}
 .backup .btn{padding:12px}
+.alts{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:18px}
+.alts .alt{margin-top:0;display:inline-flex;align-items:center;gap:6px}
+.alt svg{width:18px;height:18px}
+.status.trip i{background:var(--accent)}
+.tripcard{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);padding:16px 18px;margin-top:20px}
+.tripcard .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.tripcard .top b{font-weight:700}
+.tripcard .top span{color:var(--muted);font-size:.9rem;font-weight:600;white-space:nowrap}
+.txt{display:block;width:100%;border:0;background:var(--soft);border-radius:12px;padding:11px 12px;font:inherit;font-weight:500;color:var(--ink);margin-top:8px}
+textarea.txt{resize:vertical;min-height:72px;line-height:1.4}
+.txt::placeholder{color:var(--faint)}
+.seg.four{display:grid;grid-template-columns:1fr 1fr}
+.subhead{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 0}
+.more{color:var(--accent);font-weight:600;font-size:.92rem;padding:14px 0 2px;display:block}
+.drow .t small.tag{color:var(--accent);font-weight:500;white-space:normal;overflow:visible;margin-top:2px;line-height:1.35}
+.drow .t small.tag svg{width:15px;height:15px;vertical-align:-3px;margin-right:4px}
+.sheet-p{color:var(--muted);margin:-8px 0 20px}
+.demo{background:var(--accent-soft);border-radius:18px;padding:12px 14px;margin-bottom:18px;font-size:.88rem;line-height:1.4}
+.demo b{color:var(--accent);letter-spacing:.06em}
+.demo .row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.demo input,.demo button{background:var(--surface);border:0;border-radius:10px;padding:8px 10px;font-weight:600;font-size:.85rem;color:var(--ink)}
+.toggles{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;width:100%;margin-top:30px}
+.tg{min-width:0;background:var(--surface);border-radius:18px;box-shadow:var(--shadow);padding:12px 14px;text-align:left;display:flex;align-items:center;gap:10px;min-height:64px;transition:background .15s ease}
+.tg svg{width:22px;height:22px;flex:none;color:var(--accent)}
+.tg span{min-width:0}
+.tg b{display:block;font-weight:700;font-size:.95rem;line-height:1.2}
+.tg small{display:block;color:var(--muted);font-size:.8rem;font-weight:500;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg.on{background:var(--accent);color:var(--accent-ink);box-shadow:0 8px 20px rgba(38,72,216,.22)}
+.tg.on svg,.tg.on small{color:var(--accent-ink)}
+.tg.on small{opacity:.85}
+.tg.done{background:var(--soft);box-shadow:none}
+.tg.done svg{color:var(--pos)}
+.tg:disabled{cursor:default}
+.tg:disabled:not(.done){opacity:.45}
+.tg:not(:disabled):active{transform:scale(.97)}
+.field .dash{color:var(--muted);padding:0 2px}
+.field.pair{flex-wrap:wrap;gap:8px}
+.field.pair label{flex:1 0 100%}
+.field.pair .ctl{flex:1;gap:8px}
+.field.pair input[type=time]{flex:1;width:auto}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -161,6 +201,16 @@ dialog[open]{animation:up .22s ease}
 <main>
   <!-- DANES -->
   <section class="page" id="p-danes" aria-label="Danes">
+    <div class="demo" id="demoBar" hidden>
+      <div><b>DEMO</b> · ločeno od prave aplikacije. Tukaj premakneš uro, da preizkusiš celoten dan.</div>
+      <div class="row">
+        <input type="time" id="demoTime" aria-label="Testni čas">
+        <button type="button" id="demoPlus">+30 min</button>
+        <button type="button" id="demoReal">Pravi čas</button>
+        <button type="button" id="demoSeed">Primer podatkov</button>
+        <button type="button" id="demoReset">Počisti</button>
+      </div>
+    </div>
     <div class="install" id="installBar" hidden>
       <p id="installTxt">Dodaj na začetni zaslon za hiter dostop.</p>
       <button class="go" id="installBtn">Namesti</button>
@@ -173,7 +223,14 @@ dialog[open]{animation:up .22s ease}
     </div>
     <div class="action">
       <button class="big" id="bigBtn"></button>
-      <button class="alt" id="altBtn" hidden></button>
+      <div class="toggles" id="toggles">
+        <button type="button" class="tg" id="lunchT"></button>
+        <button type="button" class="tg" id="tripT"></button>
+      </div>
+    </div>
+    <div class="tripcard" id="tripCard" hidden>
+      <div class="top"><b>Službeni izhod</b><span id="tripTimes"></span></div>
+      <input class="txt" id="tripNaslov" maxlength="80" placeholder="Kaj delaš?">
     </div>
     <div class="summary">
       <div class="tile"><span>Danes</span><b id="todayWorked">0 min</b></div>
@@ -201,6 +258,10 @@ dialog[open]{animation:up .22s ease}
     <div class="grid">
       <div class="tile"><span id="s1l"></span><b id="s1"></b></div>
       <div class="tile"><span>Delovni dnevi</span><b id="s2"></b></div>
+    </div>
+    <div class="grid" id="extraGrid" hidden>
+      <div class="tile"><span>Službeni izhodi</span><b id="s3"></b></div>
+      <div class="tile"><span>Drugo</span><b id="s4"></b></div>
     </div>
     <h2 class="section-title">Vsi meseci</h2>
     <div class="list" id="monthList"></div>
@@ -244,12 +305,27 @@ dialog[open]{animation:up .22s ease}
     <div class="grab"></div>
     <h3 id="dlgTitle"></h3>
     <div class="field" id="dateField" style="margin-bottom:12px"><label for="fDate">Datum</label><input type="date" id="fDate"></div>
-    <div class="seg" role="group" aria-label="Vrsta dneva">
+    <div class="seg four" role="group" aria-label="Vrsta dneva">
       <button type="button" data-tip="delo">Delo</button>
       <button type="button" data-tip="dopust">Dopust</button>
       <button type="button" data-tip="bolniska">Bolniška</button>
+      <button type="button" data-tip="drugo">Drugo</button>
     </div>
-    <div id="timeFields"></div>
+    <div id="timeFields">
+      <div class="field"><label for="f_prihod">Prihod</label><span class="ctl"><input type="time" id="f_prihod"><button type="button" class="clr" data-clr="f_prihod" aria-label="Počisti">×</button></span></div>
+      <div class="field pair"><label for="f_malicaOdhod">Malica</label><span class="ctl"><input type="time" id="f_malicaOdhod" aria-label="Začetek malice"><span class="dash">–</span><input type="time" id="f_malicaPrihod" aria-label="Konec malice"><button type="button" class="clr" data-clr="f_malicaOdhod f_malicaPrihod" aria-label="Počisti">×</button></span></div>
+      <div class="field pair" id="tripFields" hidden><label for="f_potOd">Službeni izhod</label><span class="ctl"><input type="time" id="f_potOd" aria-label="Odhod iz podjetja"><span class="dash">–</span><input type="time" id="f_potDo" aria-label="Nazaj v podjetju"><button type="button" class="clr" data-clr="f_potOd f_potDo" aria-label="Počisti">×</button></span></div>
+      <div class="field"><label for="f_odhod">Odhod</label><span class="ctl"><input type="time" id="f_odhod"><button type="button" class="clr" data-clr="f_odhod" aria-label="Počisti">×</button></span></div>
+      <button type="button" class="more" id="tripMore">+ Dodaj službeni izhod</button>
+    </div>
+    <div id="noteSec">
+      <button type="button" class="more" id="noteMore">+ Dodaj naslov in opis</button>
+      <div id="noteFields" hidden>
+        <p class="subhead">Naslov in opis</p>
+        <input class="txt" id="f_naslov" maxlength="80" placeholder="Naslov">
+        <textarea class="txt" id="f_opis" rows="3" maxlength="1000" placeholder="Opis (neobvezno)"></textarea>
+      </div>
+    </div>
     <p class="err" id="dlgErr"></p>
     <div class="sheet-actions">
       <button type="button" class="btn" id="dlgCancel">Prekliči</button>
@@ -263,14 +339,17 @@ dialog[open]{animation:up .22s ease}
 
 <script>
 (function(){
+const DEMO=false;
 const TZ='Europe/Ljubljana', DAY_MIN=480, LUNCH_PAID=30;
 const FIELDS=[['prihod','Prihod v službo'],['malicaOdhod','Odhod na malico'],['malicaPrihod','Prihod iz malice'],['odhod','Odhod']];
 const MONTHS=['januar','februar','marec','april','maj','junij','julij','avgust','september','oktober','november','december'];
 const WD_LONG=['nedelja','ponedeljek','torek','sreda','četrtek','petek','sobota'];
 const WD_SHORT=['ned','pon','tor','sre','čet','pet','sob'];
-const TIP_LABEL={dopust:'Dopust',bolniska:'Bolniška'};
+const TIP_LABEL={dopust:'Dopust',bolniska:'Bolniška',drugo:'Drugo'};
+const SPECIAL=new Set(['dopust','bolniska','drugo']);
 const DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
-const CACHE_KEY='delovni-cas-v1';
+const CACHE_KEY=DEMO?'tiktak-demo-v1':'delovni-cas-v1';
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
 let state={days:{}};
@@ -278,7 +357,8 @@ let page='danes', viewYm=null;
 
 /* ---------- time ---------- */
 const fmtParts=new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
-function now(){const p={};fmtParts.formatToParts(new Date()).forEach(x=>p[x.type]=x.value);
+let demoOffset=0;
+function now(off){const p={};fmtParts.formatToParts(new Date(Date.now()+(off==null?demoOffset:off)*60000)).forEach(x=>p[x.type]=x.value);
   return {date:`${p.year}-${p.month}-${p.day}`,time:`${p.hour}:${p.minute}`,min:(+p.hour)*60+(+p.minute)}}
 const toMin=s=>{const[h,m]=s.split(':').map(Number);return h*60+m};
 const fromMin=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
@@ -314,7 +394,7 @@ const lunchExcess=(a,b)=>(a==null||b==null||b<=a)?0:Math.max(0,b-a-LUNCH_PAID);
 function lunchLen(day){return day.malicaOdhod&&day.malicaPrihod?toMin(day.malicaPrihod)-toMin(day.malicaOdhod):null}
 function worked(day){
   if(!day)return null;
-  if(day.tip==='dopust'||day.tip==='bolniska')return DAY_MIN;
+  if(SPECIAL.has(day.tip))return DAY_MIN;
   if(!day.prihod||!day.odhod)return null;
   const t=toMin(day.odhod)-toMin(day.prihod);if(t<0)return null;
   if(day.malicaOdhod&&!day.malicaPrihod)return null;
@@ -341,9 +421,10 @@ function monthStats(ym,today,start){
 }
 
 /* ---------- storage ---------- */
-function loadCache(){try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(c&&c.days)state.days=c.days}catch(e){}}
+function loadCache(){try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(c&&c.days){state.days=c.days;for(const d of Object.values(state.days))if(d&&d.tip==='izobrazevanje')d.tip='drugo'}}catch(e){}}
 function saveCache(){try{localStorage.setItem(CACHE_KEY,JSON.stringify({days:state.days}))}catch(e){}}
-function clean(day){const o={};for(const k of ['prihod','malicaOdhod','malicaPrihod','odhod','tip'])if(day&&day[k])o[k]=day[k];return o}
+function clean(day){const o={};for(const k of ['prihod','malicaOdhod','malicaPrihod','odhod','potOd','potDo','tip','naslov','opis']){let v=day&&day[k];if(typeof v==='string')v=v.trim();if(v)o[k]=v}return o}
+const tripLen=day=>day&&day.potOd&&day.potDo?Math.max(0,toMin(day.potDo)-toMin(day.potOd)):null;
 function persistDay(date,day){
   if(day&&Object.keys(clean(day)).length)state.days[date]=clean(day);else delete state.days[date];
   saveCache();render();renderBackup();
@@ -405,7 +486,7 @@ $('installBtn').onclick=async()=>{if(!installEvt)return;installEvt.prompt();awai
 $('installX').onclick=()=>{$('installBar').hidden=true;try{localStorage.setItem(INSTALL_DISMISS,'1')}catch(_){}};
 const isIos=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
-if(isIos&&!isStandalone){
+if(!DEMO&&isIos&&!isStandalone){
   let x=null;try{x=localStorage.getItem(INSTALL_DISMISS)}catch(_){}
   if(!x){
     $('installTxt').textContent='Za namestitev v Safariju tapni Skupna raba, nato Dodaj na začetni zaslon. Naredi to, preden vneseš prve ure.';
@@ -413,7 +494,7 @@ if(isIos&&!isStandalone){
   }
 }
 window.addEventListener('appinstalled',()=>{$('installBar').hidden=true});
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+if(!DEMO&&'serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 
 /* ---------- toast ---------- */
 let toastTimer,undoFn=null;
@@ -446,54 +527,100 @@ function renderToday(n){
   const today=n.date,day=state.days[today]||{};
   $('date').textContent=cap(longDate(today));
   $('clock').textContent=n.time;
-  const special=day.tip==='dopust'||day.tip==='bolniska';
-  const nextIdx=special?-1:FIELDS.findIndex(([k])=>!day[k]);
+  const special=SPECIAL.has(day.tip),started=!!day.prihod,ended=!!day.odhod;
+  const onLunch=!special&&!ended&&!!(day.malicaOdhod&&!day.malicaPrihod);
+  const onTrip=!special&&!ended&&!!(day.potOd&&!day.potDo);
 
   // status
   const st=$('status');let s='',c='';
-  if(special){s=TIP_LABEL[day.tip]}
-  else if(day.odhod){s='Delovni dan zaključen'}
-  else if(day.malicaOdhod&&!day.malicaPrihod){
+  if(special){s=day.naslov||TIP_LABEL[day.tip]}
+  else if(ended){s='Delovni dan zaključen'}
+  else if(onLunch){
     const l=n.min-toMin(day.malicaOdhod);
     s=l>LUNCH_PAID?`Malica traja ${fmtDur(l)}, ${fmtDur(l-LUNCH_PAID)} čez`:`Na malici ${fmtDur(Math.max(0,l))}`;c=l>LUNCH_PAID?'warn':'lunch';
+    if(onTrip)s+=' · izhod';
   }
-  else if(day.prihod){s='V službi od '+day.prihod;c='on'}
+  else if(onTrip){s='Na službenem izhodu od '+day.potOd;c='trip'}
+  else if(started){s='V službi od '+day.prihod;c='on'}
   else{s=weekday(today)%6===0?'Vikend':holidayName(today)||'Še nisi prišel v službo'}
   st.className='status '+c;st.querySelector('span').textContent=s;
 
-  // big button
-  const big=$('bigBtn'),alt=$('altBtn');
-  if(nextIdx>=0){
-    const[k,label]=FIELDS[nextIdx];
+  // big button: only Prihod or Odhod
+  const big=$('bigBtn');
+  if(special||ended){
+    big.className='big done';big.disabled=true;big.onclick=null;
+    big.innerHTML=special?`${TIP_LABEL[day.tip]}<small>šteje se 8 ur</small>`:'Hvala za danes<small>vse zabeleženo</small>';
+  }else if(onLunch){
     big.className='big';big.disabled=false;
-    big.innerHTML=`${label}<small>tapni za zapis</small>`;
-    big.onclick=()=>stamp(k,label);
+    big.innerHTML='Konec malice<small>tapni ob vrnitvi</small>';
+    big.onclick=()=>stamp('malicaPrihod','Konec malice');
+  }else if(started){
+    big.className='big';big.disabled=false;
+    const also=onTrip?'zaključi tudi izhod':'tapni za zapis';
+    big.innerHTML=`Odhod<small>${also}</small>`;
+    big.onclick=finishDay;
   }else{
-    big.className='big done';big.disabled=true;
-    big.innerHTML=special?`${TIP_LABEL[day.tip]}<small>šteje se 8 ur</small>`:`Hvala za danes<small>vse zabeleženo</small>`;
-    big.onclick=null;
+    big.className='big';big.disabled=false;
+    big.innerHTML='Prihod<small>tapni za zapis</small>';
+    big.onclick=()=>stamp('prihod','Prihod');
   }
-  if(nextIdx===1){alt.hidden=false;alt.textContent='Odhod brez malice';alt.onclick=()=>stamp('odhod','Odhod')}
-  else alt.hidden=true;
+
+  // toggles: Malica and Službeni izhod
+  $('toggles').hidden=special||ended;
+  if(!special&&!ended){
+    const lt=$('lunchT'),tt=$('tripT');
+    const lunchDone=!!(day.malicaOdhod&&day.malicaPrihod),tripDone=!!(day.potOd&&day.potDo);
+    setTg(lt,ICON_LUNCH,lunchDone?{st:'done',b:'Malica',s:`${day.malicaOdhod}–${day.malicaPrihod}`}
+      :onLunch?{st:'on',b:'Konec malice',s:`na malici ${fmtDur(Math.max(0,n.min-toMin(day.malicaOdhod)))}`}
+      :{b:'Malica',s:started?'tapni, ko greš':'po prihodu'});
+    lt.disabled=lunchDone||!started;
+    lt.onclick=onLunch?()=>stamp('malicaPrihod','Konec malice'):()=>stamp('malicaOdhod','Malica');
+    setTg(tt,VAN,tripDone?{st:'done',b:'Službeni izhod',s:`${day.potOd}–${day.potDo}`}
+      :onTrip?{st:'on',b:'Konec izhoda',s:`od ${day.potOd}`}
+      :{b:'Službeni izhod',s:started?'tapni, ko greš':'začne tudi dan'});
+    tt.disabled=tripDone||(onLunch&&!onTrip);
+    tt.onclick=onTrip?tripEnd:tripStart;
+  }
+
+  // izhod card
+  const tc=$('tripCard');tc.hidden=special||!day.potOd;
+  if(!tc.hidden){
+    $('tripTimes').textContent=day.potDo?`${day.potOd} – ${day.potDo} · ${fmtDur(tripLen(day))}`:`od ${day.potOd} · ${fmtDur(Math.max(0,n.min-toMin(day.potOd)))}`;
+    if(document.activeElement!==$('tripNaslov'))$('tripNaslov').value=day.naslov||'';
+  }
+  if(DEMO&&document.activeElement!==$('demoTime'))$('demoTime').value=n.time;
 
   // tiles
   const lw=liveWorked(day,n.min);
   $('todayWorked').textContent=special?'8 h':fmtDur(lw);
   let leave='—',lbl='8 ur dopolniš ob';
-  if(day.odhod&&!special){lbl='Razlika danes';const w=worked(day);leave=w!=null?fmtSigned(w-expected(today,'0000')):'—'}
-  else if(!special&&day.prihod){
+  if(ended&&!special){lbl='Razlika danes';const w=worked(day);leave=w!=null?fmtSigned(w-expected(today,'0000')):'—'}
+  else if(!special&&started){
     const a=day.malicaOdhod?toMin(day.malicaOdhod):null;
     const b=day.malicaPrihod?toMin(day.malicaPrihod):(a!=null?Math.max(n.min,a+LUNCH_PAID):null);
     leave=fromMin(toMin(day.prihod)+DAY_MIN+lunchExcess(a,b));
   }
   $('leaveLbl').textContent=lbl;$('leaveAt').textContent=leave;
-  const la=$('leaveAt');la.className=(day.odhod&&!special&&leave!=='—')?cls(worked(day)-expected(today,'0000')):'';
+  $('leaveAt').className=(ended&&!special&&leave!=='—')?cls(worked(day)-expected(today,'0000')):'';
 
-  // timeline
-  const tl=$('timeline');
-  tl.hidden=special;
-  tl.innerHTML=FIELDS.map(([k,l])=>`<div class="tl ${day[k]?'set':''}"><i></i><span>${l}</span><b>${day[k]||'—'}</b></div>`).join('');
+  // timeline: only what happened, plus Prihod/Odhod placeholders
+  const tl=$('timeline');tl.hidden=special;
+  const ev=[],startOnTrip=day.potOd&&day.prihod===day.potOd;
+  if(day.prihod&&!startOnTrip)ev.push({l:'Prihod',t:day.prihod,o:0});
+  if(day.potOd)ev.push({l:startOnTrip?'Prihod na službenem izhodu':'Službeni izhod',t:day.potOd,o:startOnTrip?0:2});
+  if(day.malicaOdhod)ev.push({l:'Malica',t:day.malicaOdhod,o:1});
+  if(day.malicaPrihod)ev.push({l:'Konec malice',t:day.malicaPrihod,o:1.5});
+  if(day.potDo&&day.potDo!==day.odhod)ev.push({l:'Nazaj v podjetju',t:day.potDo,o:3});
+  if(day.odhod)ev.push({l:day.potDo===day.odhod?'Odhod z izhoda':'Odhod',t:day.odhod,o:4});
+  ev.sort((a,b)=>toMin(a.t)-toMin(b.t)||a.o-b.o);
+  if(!day.prihod)ev.unshift({l:'Prihod',t:null});
+  if(!day.odhod)ev.push({l:'Odhod',t:null});
+  tl.innerHTML=ev.map(e=>`<div class="tl ${e.t?'set':''}"><i></i><span>${e.l}</span><b>${e.t||'—'}</b></div>`).join('');
   tl.onclick=()=>openEditor(today);
+}
+function setTg(el,icon,o){
+  el.className='tg'+(o.st==='on'?' on':o.st==='done'?' done':'');
+  el.innerHTML=`${o.st==='done'?CHECK:icon}<span><b>${o.b}</b><small>${o.s}</small></span>`;
 }
 
 function renderMonth(n){
@@ -511,6 +638,11 @@ function renderMonth(n){
   document.querySelectorAll('#p-mesec .icon-btn')[1].disabled=ym>=curYm;
   document.querySelectorAll('#p-mesec .icon-btn')[0].disabled=ym<=start.slice(0,7);
 
+  let trips=0,tripMin=0,edu=0;
+  for(const d of monthDates(ym)){const day=state.days[d];if(!day)continue;const tl=tripLen(day);if(tl!=null){trips++;tripMin+=tl}if(day.tip==='drugo')edu++}
+  $('extraGrid').hidden=!(trips||edu);
+  $('s3').textContent=trips?`${trips}× · ${fmtDur(tripMin)}`:'—';
+  $('s4').textContent=edu?dniTxt(edu):'—';
   const list=$('monthList');list.innerHTML='';
   let m=curYm;const first=start.slice(0,7);
   while(m>=first){
@@ -541,7 +673,7 @@ function renderDays(n){
     const r=document.createElement('button');r.className='drow';
     if(!day&&hol){r.classList.add('faint');t='Praznik';sub=hol}
     else if(!day){t='<span class="warn">Ni vnosa</span>';sub='Tapni za dodajanje';hrs='0 min';diffN=-e;diff=fmtSigned(-e)}
-    else if(day.tip==='dopust'||day.tip==='bolniska'){t=TIP_LABEL[day.tip];sub=hol||'Šteje se 8 ur';hrs='8 h';diffN=w-e;diff=e?'':fmtSigned(diffN)}
+    else if(SPECIAL.has(day.tip)){t=TIP_LABEL[day.tip];sub=hol||'Šteje se 8 ur';hrs='8 h';diffN=w-e;diff=e?'':fmtSigned(diffN)}
     else{
       t=`${day.prihod||'??'} – ${day.odhod||'??'}`;
       const ll=lunchLen(day);
@@ -550,12 +682,24 @@ function renderDays(n){
       if(w==null){hrs=(d===today&&!day.odhod)?'v teku':'<span class="warn">nepopolno</span>'}
       else{hrs=fmtDur(w);diffN=w-e;diff=fmtSigned(diffN)}
     }
-    r.innerHTML=`<div class="d">${parse(d).getUTCDate()}.<small>${WD_SHORT[wd]}</small></div><div class="t">${t}<small>${sub}</small></div><div class="h">${hrs}<small class="${diff?cls(diffN):''}">${diff}</small></div>`;
+    r.innerHTML=`<div class="d">${parse(d).getUTCDate()}.<small>${WD_SHORT[wd]}</small></div><div class="t">${t}<small>${sub}</small>${noteLine(day)}</div><div class="h">${hrs}<small class="${diff?cls(diffN):''}">${diff}</small></div>`;
     r.setAttribute('aria-label',longDate(d)+', uredi');
     r.onclick=()=>openEditor(d);
     list.appendChild(r);
   });
   if(!any)list.innerHTML='<div class="empty">V tem mesecu še ni vnosov.</div>';
+}
+
+const ICON_LUNCH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h12v4a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3v3M12 3v3"/></svg>';
+const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.7L16 9.8"/></svg>';
+const VAN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="Službeni izhod"><path d="M3 17V8a1 1 0 0 1 1-1h10v10M14 10h4l3 4v3h-7"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/></svg>';
+function noteLine(day){
+  if(!day)return '';
+  if(SPECIAL.has(day.tip))return day.naslov?`<small class="tag">${esc(day.naslov)}</small>`:'';
+  const parts=[];
+  if(day.potOd)parts.push(`${VAN}${day.potOd}–${day.potDo||'…'}`);
+  if(day.naslov)parts.push(esc(day.naslov));
+  return parts.length?`<small class="tag">${parts.join(' · ')}</small>`:'';
 }
 
 /* ---------- logging ---------- */
@@ -566,24 +710,57 @@ function stamp(key,label){
   toast(`${label} ob ${n.time}`,()=>persistDay(n.date,prev));
 }
 
+function tripStart(){
+  const n=now(),prev=state.days[n.date]?{...state.days[n.date]}:null;
+  const day={...(state.days[n.date]||{}),potOd:n.time};delete day.tip;
+  const startsDay=!day.prihod;if(startsDay)day.prihod=n.time;
+  persistDay(n.date,day);
+  toast(startsDay?`Dan začet na izhodu ob ${n.time}`:`Službeni izhod od ${n.time}`,()=>persistDay(n.date,prev));
+}
+function tripEnd(){
+  const n=now(),prev=state.days[n.date]?{...state.days[n.date]}:null;
+  const day={...(state.days[n.date]||{}),potDo:n.time};
+  const closedLunch=day.malicaOdhod&&!day.malicaPrihod;if(closedLunch)day.malicaPrihod=n.time;
+  persistDay(n.date,day);
+  toast(closedLunch?`Nazaj ob ${n.time}, malica zaključena`:`Nazaj v podjetju ob ${n.time}`,()=>persistDay(n.date,prev));
+}
+function finishDay(){
+  const n=now(),prev=state.days[n.date]?{...state.days[n.date]}:null;
+  const day={...(state.days[n.date]||{}),odhod:n.time};delete day.tip;
+  if(day.malicaOdhod&&!day.malicaPrihod)day.malicaPrihod=n.time;
+  if(day.potOd&&!day.potDo)day.potDo=n.time;
+  persistDay(n.date,day);
+  toast(`Odhod ob ${n.time}`,()=>persistDay(n.date,prev));
+}
+let noteTimer;
+function saveTripNote(){
+  const d=now().date,day=state.days[d];if(!day)return;
+  day.naslov=$('tripNaslov').value;
+  state.days[d]=clean(day);saveCache();
+}
+$('tripNaslov').addEventListener('input',()=>{clearTimeout(noteTimer);noteTimer=setTimeout(saveTripNote,400)});
+$('tripNaslov').addEventListener('blur',()=>{clearTimeout(noteTimer);saveTripNote()});
+
 /* ---------- editor ---------- */
 const dlg=$('dlg');let edit={date:null,isNew:false,tip:'delo'};
-function setTip(tip){edit.tip=tip;document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tip===tip)));$('timeFields').hidden=tip!=='delo'}
+function setTip(tip){edit.tip=tip;document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tip===tip)));$('timeFields').hidden=tip!=='delo';if(tip==='drugo')showNote()}
+function showTrip(){$('tripFields').hidden=false;$('tripMore').hidden=true}
+function showNote(){$('noteFields').hidden=false;$('noteMore').hidden=true}
+$('tripMore').onclick=showTrip;$('noteMore').onclick=()=>{showNote();$('f_naslov').focus()};
+document.querySelectorAll('#dlg [data-clr]').forEach(b=>b.onclick=()=>b.dataset.clr.split(' ').forEach(id=>$(id).value=''));
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>setTip(b.dataset.tip));
-function fillTimes(day){FIELDS.forEach(([k])=>$('f_'+k).value=day[k]||'');setTip(day.tip||'delo')}
+function fillTimes(day){FIELDS.forEach(([k])=>$('f_'+k).value=day[k]||'');
+  $('f_potOd').value=day.potOd||'';$('f_potDo').value=day.potDo||'';
+  const hasTrip=!!(day.potOd||day.potDo);$('tripFields').hidden=!hasTrip;$('tripMore').hidden=hasTrip;
+  $('f_naslov').value=day.naslov||'';$('f_opis').value=day.opis||'';
+  const hasNote=!!(day.naslov||day.opis);$('noteFields').hidden=!hasNote;$('noteMore').hidden=hasNote;
+  setTip(day.tip||'delo')}
 function openEditor(date){
   const isNew=!date,d=date||now().date;
   edit={date:d,isNew,tip:'delo'};
   $('dlgTitle').textContent=isNew?'Dodaj dan':cap(longDate(d));
   $('dateField').hidden=!isNew;$('fDate').value=d;$('fDate').max=now().date;
   $('dlgDelete').hidden=isNew||!state.days[d];$('dlgErr').textContent='';
-  const tf=$('timeFields');tf.innerHTML='';
-  FIELDS.forEach(([k,l])=>{
-    const f=document.createElement('div');f.className='field';
-    f.innerHTML=`<label for="f_${k}">${l}</label><span class="ctl"><input type="time" id="f_${k}"><button type="button" class="clr" aria-label="Počisti">×</button></span>`;
-    f.querySelector('.clr').onclick=()=>f.querySelector('input').value='';
-    tf.appendChild(f);
-  });
   fillTimes(state.days[d]||{});
   $('fDate').onchange=e=>fillTimes(state.days[e.target.value]||{});
   dlg.showModal();
@@ -602,12 +779,52 @@ $('dlgForm').addEventListener('submit',e=>{
     day={};FIELDS.forEach(([k])=>{const v=$('f_'+k).value;if(v)day[k]=v});
     const t=FIELDS.map(([k])=>day[k]?toMin(day[k]):null).filter(x=>x!=null);
     for(let i=1;i<t.length;i++)if(t[i]<t[i-1]){err.textContent='Časi morajo biti po vrsti: prihod, malica, odhod.';return}
-    if(day.malicaOdhod&&!day.malicaPrihod&&day.odhod){err.textContent='Vpiši še prihod iz malice.';return}
-    if(day.malicaPrihod&&!day.malicaOdhod){err.textContent='Vpiši še odhod na malico.';return}
+    if(day.malicaOdhod&&!day.malicaPrihod&&day.odhod){err.textContent='Vpiši še konec malice.';return}
+    if(day.malicaPrihod&&!day.malicaOdhod){err.textContent='Vpiši še začetek malice.';return}
+    const po=$('f_potOd').value,pd=$('f_potDo').value;
+    if(po)day.potOd=po;if(pd)day.potDo=pd;
+    const old=state.days[d];
+    if(old&&old.odhod&&old.odhod===old.potDo&&day.odhod===old.odhod&&day.potDo&&day.potDo!==old.potDo)day.odhod=day.potDo;
+    if(pd&&!po){err.textContent='Vpiši še, kdaj si odšel iz podjetja.';return}
+    if(po&&!day.prihod){err.textContent='Vpiši še prihod v službo.';return}
+    if(po&&toMin(po)<toMin(day.prihod)){err.textContent='Službeni izhod se ne more začeti pred prihodom v službo.';return}
+    if(po&&!pd&&!(d===now().date&&!day.odhod)){err.textContent='Vpiši še, kdaj si se vrnil v podjetje.';return}
+    if(po&&pd&&toMin(pd)<toMin(po)){err.textContent='Vrnitev mora biti po odhodu iz podjetja.';return}
+    if(pd&&day.odhod&&toMin(pd)>toMin(day.odhod)){err.textContent='Odhod je pred koncem izhoda. Če se je dan končal z izhodom, nastavi odhod na konec izhoda.';return}
   }
+  const nas=$('f_naslov').value.trim(),op=$('f_opis').value.trim();
+  if(nas)day.naslov=nas;if(op)day.opis=op;
   const prev=state.days[d]?{...state.days[d]}:null;
   dlg.close();persistDay(d,day);toast('Shranjeno',()=>persistDay(d,prev));
 });
+
+/* ---------- demo ---------- */
+if(DEMO){
+  $('demoBar').hidden=false;document.querySelector('.backup').hidden=true;
+  $('demoTime').onchange=e=>{
+    if(!e.target.value)return;
+    const real=now(0);let off=toMin(e.target.value)-real.min;
+    if(now(off).date>real.date)off-=1440;else if(now(off).date<real.date)off+=1440;
+    demoOffset=off;render();
+  };
+  $('demoPlus').onclick=()=>{demoOffset+=30;render()};
+  $('demoReal').onclick=()=>{demoOffset=0;render()};
+  $('demoReset').onclick=()=>{const prev=state.days;state.days={};saveCache();render();toast('Demo počiščen',()=>{state.days=prev;saveCache();render()})};
+  $('demoSeed').onclick=()=>{
+    const today=now().date,ds=[];let d=parse(today);
+    while(ds.length<5){d=new Date(d.getTime()-864e5);const s=d.toISOString().slice(0,10);const w=d.getUTCDay();if(w>0&&w<6&&!holidayName(s))ds.unshift(s)}
+    const sample=[
+      {prihod:'07:58',malicaOdhod:'12:02',malicaPrihod:'12:31',odhod:'16:03'},
+      {tip:'drugo',naslov:'Izobraževanje v Ljubljani',opis:'Predavanje o uporabi umetne inteligence v podjetjih.'},
+      {prihod:'08:10',malicaOdhod:'11:50',malicaPrihod:'12:25',odhod:'16:15'},
+      {prihod:'08:02',potOd:'09:40',potDo:'11:05',malicaOdhod:'12:10',malicaPrihod:'12:40',odhod:'16:05',naslov:'Sestanek pri stranki'},
+      {prihod:'08:05',malicaOdhod:'12:00',malicaPrihod:'12:30',potOd:'16:00',potDo:'18:40',odhod:'18:40',naslov:'Delo zunaj podjetja',opis:'Po koncu delovnega časa opravil še dogovorjeno delo zunaj podjetja.'}
+    ];
+    const prev={...state.days};
+    ds.forEach((s,i)=>state.days[s]=sample[i]);
+    saveCache();render();toast('Dodanih 5 primerov',()=>{state.days=prev;saveCache();render()});
+  };
+}
 
 /* ---------- start ---------- */
 loadCache();render();
