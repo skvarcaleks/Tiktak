@@ -194,6 +194,9 @@ textarea.txt{resize:vertical;min-height:72px;line-height:1.4}
 .field.pair label{flex:1 0 100%}
 .field.pair .ctl{flex:1;gap:8px}
 .field.pair input[type=time]{flex:1;width:auto}
+.backup .seg{margin-bottom:10px}
+.backup .seg:last-of-type{margin-bottom:14px}
+.backup .btn.wide{width:100%}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -237,6 +240,7 @@ textarea.txt{resize:vertical;min-height:72px;line-height:1.4}
       <div class="tile"><span id="leaveLbl">8 ur dopolniš ob</span><b id="leaveAt">—</b></div>
     </div>
     <button class="timeline" id="timeline" aria-label="Uredi današnje čase"></button>
+    <div style="text-align:center"><button type="button" class="alt" id="sickLink">+ Bolniška (del dneva)</button></div>
     <p class="hint">Tapni čase za urejanje</p>
   </section>
 
@@ -260,8 +264,9 @@ textarea.txt{resize:vertical;min-height:72px;line-height:1.4}
       <div class="tile"><span>Delovni dnevi</span><b id="s2"></b></div>
     </div>
     <div class="grid" id="extraGrid" hidden>
-      <div class="tile"><span>Službeni izhodi</span><b id="s3"></b></div>
-      <div class="tile"><span>Drugo</span><b id="s4"></b></div>
+      <div class="tile" id="t3"><span>Službeni izhodi</span><b id="s3"></b></div>
+      <div class="tile" id="t4"><span>Drugo</span><b id="s4"></b></div>
+      <div class="tile" id="t5"><span>Bolniška</span><b id="s5"></b></div>
     </div>
     <h2 class="section-title">Vsi meseci</h2>
     <div class="list" id="monthList"></div>
@@ -279,6 +284,19 @@ textarea.txt{resize:vertical;min-height:72px;line-height:1.4}
     <div class="list" id="dayList"></div>
     <div style="display:flex;justify-content:center;margin-top:18px">
       <button class="fab" id="addDay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Dodaj dan</button>
+    </div>
+    <div class="backup" id="exportCard">
+      <h2>Izvoz ur</h2>
+      <p>Ure lahko izvoziš kot tabelo za Excel (CSV) ali kot berljivo besedilo.</p>
+      <div class="seg" role="group" aria-label="Oblika">
+        <button type="button" data-fmt="csv" aria-pressed="true">CSV</button>
+        <button type="button" data-fmt="txt" aria-pressed="false">Besedilo</button>
+      </div>
+      <div class="seg" role="group" aria-label="Obdobje">
+        <button type="button" data-range="month" aria-pressed="true" id="expMonthLbl">Ta mesec</button>
+        <button type="button" data-range="all" aria-pressed="false">Vse</button>
+      </div>
+      <button type="button" class="btn primary wide" id="expHoursBtn">Izvozi ure</button>
     </div>
     <div class="backup">
       <h2>Varnostna kopija</h2>
@@ -311,7 +329,12 @@ textarea.txt{resize:vertical;min-height:72px;line-height:1.4}
       <button type="button" data-tip="bolniska">Bolniška</button>
       <button type="button" data-tip="drugo">Drugo</button>
     </div>
+    <div class="seg" id="sickMode" role="group" aria-label="Obseg bolniške" hidden>
+      <button type="button" data-sick="full" aria-pressed="true">Cel dan</button>
+      <button type="button" data-sick="part" aria-pressed="false">Del dneva</button>
+    </div>
     <div id="timeFields">
+      <div class="field pair" id="sickFields" hidden><label for="f_bolOd">Bolniška</label><span class="ctl"><input type="time" id="f_bolOd" aria-label="Začetek bolniške"><span class="dash">–</span><input type="time" id="f_bolDo" aria-label="Konec bolniške"><button type="button" class="clr" data-clr="f_bolOd f_bolDo" aria-label="Počisti">×</button></span></div>
       <div class="field"><label for="f_prihod">Prihod</label><span class="ctl"><input type="time" id="f_prihod"><button type="button" class="clr" data-clr="f_prihod" aria-label="Počisti">×</button></span></div>
       <div class="field pair"><label for="f_malicaOdhod">Malica</label><span class="ctl"><input type="time" id="f_malicaOdhod" aria-label="Začetek malice"><span class="dash">–</span><input type="time" id="f_malicaPrihod" aria-label="Konec malice"><button type="button" class="clr" data-clr="f_malicaOdhod f_malicaPrihod" aria-label="Počisti">×</button></span></div>
       <div class="field pair" id="tripFields" hidden><label for="f_potOd">Službeni izhod</label><span class="ctl"><input type="time" id="f_potOd" aria-label="Odhod iz podjetja"><span class="dash">–</span><input type="time" id="f_potDo" aria-label="Nazaj v podjetju"><button type="button" class="clr" data-clr="f_potOd f_potDo" aria-label="Počisti">×</button></span></div>
@@ -391,23 +414,33 @@ const holidayName=s=>holidays(+s.slice(0,4))[s]||null;
 function startDate(){const k=Object.keys(state.days).sort();return k.length?k[0]:now().date}
 function expected(s,start){if(s<start)return 0;const w=weekday(s);if(w===0||w===6||holidayName(s))return 0;return DAY_MIN}
 const lunchExcess=(a,b)=>(a==null||b==null||b<=a)?0:Math.max(0,b-a-LUNCH_PAID);
+const ovl=(s1,e1,s2,e2)=>Math.max(0,Math.min(e1,e2)-Math.max(s1,s2));
+function sickLen(day){return day&&day.bolOd&&day.bolDo?Math.max(0,toMin(day.bolDo)-toMin(day.bolOd)):null}
+// sick minutes outside the work span (never counted twice), optionally only up to `until`
+function sickExtra(day,spanS,spanE,until){
+  if(!day||!day.bolOd||!day.bolDo)return 0;
+  const s=toMin(day.bolOd);let e=toMin(day.bolDo);if(until!=null)e=Math.min(e,until);if(e<=s)return 0;
+  return (e-s)-(spanS==null?0:ovl(s,e,spanS,spanE));
+}
 function lunchLen(day){return day.malicaOdhod&&day.malicaPrihod?toMin(day.malicaPrihod)-toMin(day.malicaOdhod):null}
 function worked(day){
   if(!day)return null;
   if(SPECIAL.has(day.tip))return DAY_MIN;
+  if(!day.prihod&&!day.odhod&&sickLen(day)!=null)return sickLen(day);
   if(!day.prihod||!day.odhod)return null;
   const t=toMin(day.odhod)-toMin(day.prihod);if(t<0)return null;
   if(day.malicaOdhod&&!day.malicaPrihod)return null;
   const a=day.malicaOdhod?toMin(day.malicaOdhod):null,b=day.malicaPrihod?toMin(day.malicaPrihod):null;
-  return Math.max(0,t-lunchExcess(a,b));
+  return Math.max(0,t-lunchExcess(a,b))+sickExtra(day,toMin(day.prihod),toMin(day.odhod));
 }
 function liveWorked(day,nowMin){
-  if(!day||!day.prihod)return 0;
+  if(!day)return 0;
+  if(!day.prihod)return sickExtra(day,null,null,nowMin);
   const w=worked(day);if(w!=null)return w;
   const p=toMin(day.prihod);if(nowMin<p)return 0;
   const a=day.malicaOdhod?toMin(day.malicaOdhod):null;
   const b=day.malicaPrihod?toMin(day.malicaPrihod):(a!=null?nowMin:null);
-  return Math.max(0,nowMin-p-lunchExcess(a,b));
+  return Math.max(0,nowMin-p-lunchExcess(a,b))+sickExtra(day,p,nowMin,nowMin);
 }
 function monthDates(ym){const[y,m]=ym.split('-').map(Number);const n=new Date(Date.UTC(y,m,0)).getUTCDate();const o=[];for(let d=1;d<=n;d++)o.push(`${ym}-${pad(d)}`);return o}
 function monthStats(ym,today,start){
@@ -423,7 +456,7 @@ function monthStats(ym,today,start){
 /* ---------- storage ---------- */
 function loadCache(){try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(c&&c.days){state.days=c.days;for(const d of Object.values(state.days))if(d&&d.tip==='izobrazevanje')d.tip='drugo'}}catch(e){}}
 function saveCache(){try{localStorage.setItem(CACHE_KEY,JSON.stringify({days:state.days}))}catch(e){}}
-function clean(day){const o={};for(const k of ['prihod','malicaOdhod','malicaPrihod','odhod','potOd','potDo','tip','naslov','opis']){let v=day&&day[k];if(typeof v==='string')v=v.trim();if(v)o[k]=v}return o}
+function clean(day){const o={};for(const k of ['prihod','malicaOdhod','malicaPrihod','odhod','potOd','potDo','bolOd','bolDo','tip','naslov','opis']){let v=day&&day[k];if(typeof v==='string')v=v.trim();if(v)o[k]=v}return o}
 const tripLen=day=>day&&day.potOd&&day.potDo?Math.max(0,toMin(day.potDo)-toMin(day.potOd)):null;
 function persistDay(date,day){
   if(day&&Object.keys(clean(day)).length)state.days[date]=clean(day);else delete state.days[date];
@@ -457,6 +490,85 @@ $('exportBtn').onclick=()=>{
   try{localStorage.setItem(BACKUP_KEY,new Date().toISOString())}catch(e){}
   renderBackup();toast('Kopija shranjena v Prenose');
 };
+/* ---------- export hours (CSV / text) ---------- */
+let expFmt='csv',expRange='month';
+document.querySelectorAll('#exportCard [data-fmt]').forEach(b=>b.onclick=()=>{expFmt=b.dataset.fmt;document.querySelectorAll('#exportCard [data-fmt]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
+document.querySelectorAll('#exportCard [data-range]').forEach(b=>b.onclick=()=>{expRange=b.dataset.range;document.querySelectorAll('#exportCard [data-range]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
+const hm=m=>{const neg=m<0;m=Math.round(Math.abs(m));return (neg?'-':'')+Math.floor(m/60)+':'+pad(m%60)};
+const dec=m=>(m/60).toFixed(2).replace('.',',');
+const sloDate=d=>{const[y,m,dd]=d.split('-');return `${+dd}. ${+m}. ${y}`};
+function exportRows(dates){
+  const start=startDate(),today=now().date,rows=[];
+  for(const d of dates){
+    const day=state.days[d],e=expected(d,start);
+    if(!day&&!(e&&d<today))continue;
+    const w=day?worked(day):null;
+    const vrsta=!day?'Ni vnosa':SPECIAL.has(day.tip)?TIP_LABEL[day.tip]:(w==null?'V teku':day.bolOd?(day.prihod?'Delo + bolniška':'Bolniška (del dneva)'):'Delo');
+    const done=day?w:0;
+    rows.push({d,day:day||{},e,w:done,diff:done==null?null:done-e,vrsta,trip:day?tripLen(day):null});
+  }
+  return rows;
+}
+function exportDates(){
+  if(expRange==='month')return monthDates(viewYm);
+  const keys=Object.keys(state.days).sort(),today=now().date;
+  const first=(keys[0]||today).slice(0,7),last=[keys[keys.length-1]||today,today].sort()[1].slice(0,7);
+  const out=[];for(let ym=first;ym<=last;ym=shiftYm(ym,1))out.push(...monthDates(ym));
+  return out;
+}
+function totals(rows){
+  let w=0,e=0,diff=0,trips=0,tripMin=0;
+  rows.forEach(r=>{if(r.w!=null){w+=r.w;diff+=r.diff;e+=r.e}else if(r.vrsta==='V teku'){}else e+=r.e;if(r.trip!=null){trips++;tripMin+=r.trip}});
+  return{w,e,diff,trips,tripMin};
+}
+function buildCsv(rows){
+  const q=v=>{v=v==null?'':String(v);return /[;"\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const head=['Datum','Dan','Vrsta','Prihod','Malica od','Malica do','Službeni izhod od','Službeni izhod do','Bolniška od','Bolniška do','Odhod','Opravljeno (h:mm)','Opravljeno (ure)','Pričakovano (h:mm)','Razlika (h:mm)','Naslov','Opis'];
+  const lines=[head.map(q).join(';')];
+  rows.forEach(r=>{const x=r.day;lines.push([sloDate(r.d),WD_SHORT[weekday(r.d)],r.vrsta,x.prihod,x.malicaOdhod,x.malicaPrihod,x.potOd,x.potDo,x.bolOd,x.bolDo,x.odhod,
+    r.w==null?'':hm(r.w),r.w==null?'':dec(r.w),hm(r.e),r.diff==null?'':hm(r.diff),x.naslov,x.opis].map(q).join(';'))});
+  const t=totals(rows);
+  lines.push(['Skupaj','','','','','','','','','','',hm(t.w),dec(t.w),hm(t.e),hm(t.diff),'',''].map(q).join(';'));
+  return '\ufeff'+lines.join('\r\n')+'\r\n';
+}
+function buildTxt(rows,title){
+  const L=['Tiktak – delovne ure',title,'Izvoženo: '+sloDate(now().date),''];
+  let curM='';
+  rows.forEach(r=>{
+    const x=r.day,m=r.d.slice(0,7);
+    if(expRange==='all'&&m!==curM){curM=m;if(L[L.length-1]!=='')L.push('');L.push(cap(MONTHS[+m.slice(5)-1])+' '+m.slice(0,4),'')}
+    const parts=[`${cap(WD_SHORT[weekday(r.d)])} ${sloDate(r.d)}`];
+    if(x.prihod||x.odhod){
+      parts.push(`${x.prihod||'?'}–${x.odhod||'…'}`);
+      if(x.malicaOdhod)parts.push(`malica ${x.malicaOdhod}–${x.malicaPrihod||'…'}`);
+    }else parts.push(r.vrsta);
+    if(r.w!=null)parts.push(`${fmtDur(r.w)} (${fmtSigned(r.diff)})`);else parts.push('v teku');
+    L.push(parts.join(' · '));
+    if(x.bolOd)L.push(`   Bolniška ${x.bolOd}–${x.bolDo||'…'}`);
+    if(x.potOd)L.push(`   Službeni izhod ${x.potOd}–${x.potDo||'…'}`);
+    if(x.naslov)L.push(`   ${x.naslov}`);
+    if(x.opis)L.push(`   ${x.opis.replace(/\s*\n\s*/g,' ')}`);
+  });
+  const t=totals(rows);
+  L.push('','Skupaj',`Opravljeno: ${fmtDur(t.w)}`,`Pričakovano: ${fmtDur(t.e)}`,`Razlika: ${fmtSigned(t.diff)}`);
+  if(t.trips)L.push(`Službeni izhodi: ${t.trips}× (${fmtDur(t.tripMin)})`);
+  return L.join('\n')+'\n';
+}
+function downloadFile(name,text,type){
+  const blob=new Blob([text],{type});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+$('expHoursBtn').onclick=()=>{
+  const rows=exportRows(exportDates());
+  if(!rows.length){toast('Ni ur za izvoz.');return}
+  const title=expRange==='month'?cap(MONTHS[+viewYm.slice(5)-1])+' '+viewYm.slice(0,4):'Vsi vnosi';
+  const base='tiktak-ure-'+(expRange==='month'?viewYm:'vse');
+  if(expFmt==='csv')downloadFile(base+'.csv',buildCsv(rows),'text/csv;charset=utf-8');
+  else downloadFile(base+'.txt',buildTxt(rows,title),'text/plain;charset=utf-8');
+  toast('Ure izvožene v Prenose');
+};
+
 $('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
@@ -598,7 +710,7 @@ function renderToday(n){
   else if(!special&&started){
     const a=day.malicaOdhod?toMin(day.malicaOdhod):null;
     const b=day.malicaPrihod?toMin(day.malicaPrihod):(a!=null?Math.max(n.min,a+LUNCH_PAID):null);
-    leave=fromMin(toMin(day.prihod)+DAY_MIN+lunchExcess(a,b));
+    leave=fromMin(toMin(day.prihod)+DAY_MIN+lunchExcess(a,b)-sickExtra(day,toMin(day.prihod),1440));
   }
   $('leaveLbl').textContent=lbl;$('leaveAt').textContent=leave;
   $('leaveAt').className=(ended&&!special&&leave!=='—')?cls(worked(day)-expected(today,'0000')):'';
@@ -606,6 +718,7 @@ function renderToday(n){
   // timeline: only what happened, plus Prihod/Odhod placeholders
   const tl=$('timeline');tl.hidden=special;
   const ev=[],startOnTrip=day.potOd&&day.prihod===day.potOd;
+  if(day.bolOd)ev.push({l:'Bolniška',t:day.bolOd,o:-0.5,show:`${day.bolOd}–${day.bolDo||'…'}`});
   if(day.prihod&&!startOnTrip)ev.push({l:'Prihod',t:day.prihod,o:0});
   if(day.potOd)ev.push({l:startOnTrip?'Prihod na službenem izhodu':'Službeni izhod',t:day.potOd,o:startOnTrip?0:2});
   if(day.malicaOdhod)ev.push({l:'Malica',t:day.malicaOdhod,o:1});
@@ -615,8 +728,10 @@ function renderToday(n){
   ev.sort((a,b)=>toMin(a.t)-toMin(b.t)||a.o-b.o);
   if(!day.prihod)ev.unshift({l:'Prihod',t:null});
   if(!day.odhod)ev.push({l:'Odhod',t:null});
-  tl.innerHTML=ev.map(e=>`<div class="tl ${e.t?'set':''}"><i></i><span>${e.l}</span><b>${e.t||'—'}</b></div>`).join('');
+  tl.innerHTML=ev.map(e=>`<div class="tl ${e.t?'set':''}"><i></i><span>${e.l}</span><b>${e.show||e.t||'—'}</b></div>`).join('');
   tl.onclick=()=>openEditor(today);
+  $('sickLink').hidden=special||!!day.bolOd;
+  $('sickLink').onclick=()=>openEditor(today,{sick:true});
 }
 function setTg(el,icon,o){
   el.className='tg'+(o.st==='on'?' on':o.st==='done'?' done':'');
@@ -638,9 +753,11 @@ function renderMonth(n){
   document.querySelectorAll('#p-mesec .icon-btn')[1].disabled=ym>=curYm;
   document.querySelectorAll('#p-mesec .icon-btn')[0].disabled=ym<=start.slice(0,7);
 
-  let trips=0,tripMin=0,edu=0;
-  for(const d of monthDates(ym)){const day=state.days[d];if(!day)continue;const tl=tripLen(day);if(tl!=null){trips++;tripMin+=tl}if(day.tip==='drugo')edu++}
-  $('extraGrid').hidden=!(trips||edu);
+  let trips=0,tripMin=0,edu=0,sickDays=0,sickMin=0;
+  for(const d of monthDates(ym)){const day=state.days[d];if(!day)continue;const tl=tripLen(day);if(tl!=null){trips++;tripMin+=tl}if(day.tip==='drugo')edu++;if(day.tip==='bolniska'){sickDays++;sickMin+=DAY_MIN}else{const sl=sickLen(day);if(sl!=null){sickDays++;sickMin+=sl}}}
+  $('extraGrid').hidden=!(trips||edu||sickDays);
+  $('t3').hidden=!trips;$('t4').hidden=!edu;$('t5').hidden=!sickDays;
+  $('s5').textContent=sickDays?`${dniTxt(sickDays)} · ${fmtDur(sickMin)}`:'—';
   $('s3').textContent=trips?`${trips}× · ${fmtDur(tripMin)}`:'—';
   $('s4').textContent=edu?dniTxt(edu):'—';
   const list=$('monthList');list.innerHTML='';
@@ -657,6 +774,7 @@ function renderMonth(n){
 function renderDays(n){
   const today=n.date,start=startDate(),ym=viewYm,curYm=today.slice(0,7);
   $('dYear').textContent=ym.slice(0,4);$('dName').textContent=cap(MONTHS[+ym.slice(5)-1]);
+  $('expMonthLbl').textContent=cap(MONTHS[+ym.slice(5)-1])+' '+ym.slice(0,4);
   document.querySelectorAll('#p-dnevi .icon-btn')[1].disabled=ym>=curYm;
   document.querySelectorAll('#p-dnevi .icon-btn')[0].disabled=ym<=start.slice(0,7);
   const list=$('dayList');list.innerHTML='';
@@ -679,6 +797,7 @@ function renderDays(n){
       const ll=lunchLen(day);
       sub=ll!=null?(ll>LUNCH_PAID?`<span class="warn">malica ${fmtDur(ll)}</span>`:`malica ${fmtDur(ll)}`):(day.malicaOdhod?'malica ni zaključena':'brez malice');
       if(hol)sub+=`, ${hol}`;
+      if(!day.prihod&&!day.odhod&&day.bolOd){t='Bolniška';sub='del dneva'+(hol?`, ${hol}`:'')}
       if(w==null){hrs=(d===today&&!day.odhod)?'v teku':'<span class="warn">nepopolno</span>'}
       else{hrs=fmtDur(w);diffN=w-e;diff=fmtSigned(diffN)}
     }
@@ -692,11 +811,13 @@ function renderDays(n){
 
 const ICON_LUNCH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h12v4a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3v3M12 3v3"/></svg>';
 const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.7L16 9.8"/></svg>';
+const STETH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-label="Bolniška"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></svg>';
 const VAN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="Službeni izhod"><path d="M3 17V8a1 1 0 0 1 1-1h10v10M14 10h4l3 4v3h-7"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/></svg>';
 function noteLine(day){
   if(!day)return '';
   if(SPECIAL.has(day.tip))return day.naslov?`<small class="tag">${esc(day.naslov)}</small>`:'';
   const parts=[];
+  if(day.bolOd)parts.push(`${STETH}Bolniška ${day.bolOd}–${day.bolDo||'…'}`);
   if(day.potOd)parts.push(`${VAN}${day.potOd}–${day.potDo||'…'}`);
   if(day.naslov)parts.push(esc(day.naslov));
   return parts.length?`<small class="tag">${parts.join(' · ')}</small>`:'';
@@ -743,25 +864,35 @@ $('tripNaslov').addEventListener('blur',()=>{clearTimeout(noteTimer);saveTripNot
 
 /* ---------- editor ---------- */
 const dlg=$('dlg');let edit={date:null,isNew:false,tip:'delo'};
-function setTip(tip){edit.tip=tip;document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tip===tip)));$('timeFields').hidden=tip!=='delo';if(tip==='drugo')showNote()}
+function setTip(tip){edit.tip=tip;document.querySelectorAll('#dlg .seg.four button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tip===tip)));
+  const part=tip==='bolniska'&&!!edit.partial;
+  $('sickMode').hidden=tip!=='bolniska';
+  document.querySelectorAll('#sickMode button').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.sick==='part')===!!edit.partial)));
+  $('timeFields').hidden=!(tip==='delo'||part);$('sickFields').hidden=!part;
+  if(tip==='drugo')showNote()}
+function setSick(p){edit.partial=p;setTip('bolniska')}
+document.querySelectorAll('#sickMode button').forEach(b=>b.onclick=()=>setSick(b.dataset.sick==='part'));
 function showTrip(){$('tripFields').hidden=false;$('tripMore').hidden=true}
 function showNote(){$('noteFields').hidden=false;$('noteMore').hidden=true}
 $('tripMore').onclick=showTrip;$('noteMore').onclick=()=>{showNote();$('f_naslov').focus()};
 document.querySelectorAll('#dlg [data-clr]').forEach(b=>b.onclick=()=>b.dataset.clr.split(' ').forEach(id=>$(id).value=''));
-document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>setTip(b.dataset.tip));
+document.querySelectorAll('#dlg .seg.four button').forEach(b=>b.onclick=()=>setTip(b.dataset.tip));
 function fillTimes(day){FIELDS.forEach(([k])=>$('f_'+k).value=day[k]||'');
   $('f_potOd').value=day.potOd||'';$('f_potDo').value=day.potDo||'';
   const hasTrip=!!(day.potOd||day.potDo);$('tripFields').hidden=!hasTrip;$('tripMore').hidden=hasTrip;
   $('f_naslov').value=day.naslov||'';$('f_opis').value=day.opis||'';
   const hasNote=!!(day.naslov||day.opis);$('noteFields').hidden=!hasNote;$('noteMore').hidden=hasNote;
-  setTip(day.tip||'delo')}
-function openEditor(date){
+  $('f_bolOd').value=day.bolOd||'';$('f_bolDo').value=day.bolDo||'';
+  edit.partial=!!(day.bolOd||day.bolDo);
+  setTip(edit.partial?'bolniska':(day.tip||'delo'))}
+function openEditor(date,opts){
   const isNew=!date,d=date||now().date;
   edit={date:d,isNew,tip:'delo'};
   $('dlgTitle').textContent=isNew?'Dodaj dan':cap(longDate(d));
   $('dateField').hidden=!isNew;$('fDate').value=d;$('fDate').max=now().date;
   $('dlgDelete').hidden=isNew||!state.days[d];$('dlgErr').textContent='';
   fillTimes(state.days[d]||{});
+  if(opts&&opts.sick){setSick(true);setTimeout(()=>$('f_bolOd').focus(),60)}
   $('fDate').onchange=e=>fillTimes(state.days[e.target.value]||{});
   dlg.showModal();
 }
@@ -774,7 +905,8 @@ $('dlgForm').addEventListener('submit',e=>{
   const err=$('dlgErr'),d=edit.isNew?$('fDate').value:edit.date;
   if(!DATE_RE.test(d||'')){err.textContent='Izberi datum.';return}
   let day;
-  if(edit.tip!=='delo')day={tip:edit.tip};
+  const partSick=edit.tip==='bolniska'&&!!edit.partial;
+  if(edit.tip!=='delo'&&!partSick)day={tip:edit.tip};
   else{
     day={};FIELDS.forEach(([k])=>{const v=$('f_'+k).value;if(v)day[k]=v});
     const t=FIELDS.map(([k])=>day[k]?toMin(day[k]):null).filter(x=>x!=null);
@@ -791,6 +923,12 @@ $('dlgForm').addEventListener('submit',e=>{
     if(po&&!pd&&!(d===now().date&&!day.odhod)){err.textContent='Vpiši še, kdaj si se vrnil v podjetje.';return}
     if(po&&pd&&toMin(pd)<toMin(po)){err.textContent='Vrnitev mora biti po odhodu iz podjetja.';return}
     if(pd&&day.odhod&&toMin(pd)>toMin(day.odhod)){err.textContent='Odhod je pred koncem izhoda. Če se je dan končal z izhodom, nastavi odhod na konec izhoda.';return}
+    if(partSick){
+      const bo=$('f_bolOd').value,bd=$('f_bolDo').value;
+      if(!bo||!bd){err.textContent='Vpiši, od kdaj do kdaj je bila bolniška.';return}
+      if(toMin(bd)<=toMin(bo)){err.textContent='Konec bolniške mora biti po začetku.';return}
+      day.bolOd=bo;day.bolDo=bd;
+    }
   }
   const nas=$('f_naslov').value.trim(),op=$('f_opis').value.trim();
   if(nas)day.naslov=nas;if(op)day.opis=op;
@@ -800,7 +938,7 @@ $('dlgForm').addEventListener('submit',e=>{
 
 /* ---------- demo ---------- */
 if(DEMO){
-  $('demoBar').hidden=false;document.querySelector('.backup').hidden=true;
+  $('demoBar').hidden=false;document.querySelectorAll('.backup').forEach(x=>x.hidden=true);
   $('demoTime').onchange=e=>{
     if(!e.target.value)return;
     const real=now(0);let off=toMin(e.target.value)-real.min;
